@@ -8,6 +8,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SecretSanta.Filter;
+using SecretSanta.Middleware;
+using SecretSanta.Repository;
 
 namespace SecretSanta
 {
@@ -23,7 +26,9 @@ namespace SecretSanta
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddTransient<IUsersRepository, UsersRepository>();
             services.AddMvc();
+            services.AddScoped<AuthenticationFilter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -34,7 +39,10 @@ namespace SecretSanta
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseMiddleware(typeof(ErrorHandlingMiddleware));
+
             app.UseMvc();
+
         }
     }
 }

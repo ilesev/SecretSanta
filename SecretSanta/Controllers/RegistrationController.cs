@@ -1,28 +1,36 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using MySql.Data.MySqlClient;
+using SecretSanta.Repository;
 
 namespace SecretSanta.Controllers
 {
     public class RegistrationController : Controller
     {
-        public String myConfig {get;set;}
+        private String myConfig {get;set;}
+        private IUsersRepository Repository { get; set; }
 
-        public RegistrationController(IConfiguration Configuration)
+        public RegistrationController(IConfiguration Configuration, IUsersRepository Repository)
         {
-            myConfig = Configuration["DbConnectionString"];
+            this.Repository = Repository;
+            this.myConfig = Configuration["DbConnectionString"];
         }
 
-        [Route("api")]
-        public async Task<string> RegisterAsync()
+        [HttpPost("users")]
+        public async Task<IActionResult> RegisterAsync([FromBody] User user)
         {
-            return myConfig;
+            if (ModelState.IsValid)
+            {
+                if (await Repository.userExists(user.Username)) 
+                    {
+                        return StatusCode(StatusCodes.Status409Conflict, "Username already exists");
+                    }
+                    await Repository.RegisterUser(user);
+                return Created(Uri.UriSchemeHttp, new { displayname = user.DisplayName });
+            }
+            return BadRequest("Invalid registration request.");
         }
     }
 }
