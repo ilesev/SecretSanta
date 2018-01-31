@@ -168,7 +168,7 @@ namespace SecretSanta.Controllers
         private string getAuthToken(HttpRequest request)
         {
             StringValues authToken;
-            Request.Headers.TryGetValue("AuthenticationToken", out authToken);
+            request.Headers.TryGetValue("AuthenticationToken", out authToken);
             return authToken[0];
         }
 

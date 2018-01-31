@@ -14,5 +14,8 @@ namespace SecretSanta.Repository
         Task<bool> UserHasInvitationForGroup(string groupname, string username);
         Task sendInvitation(Invitation invitation);
         Task<IEnumerable<InvitationVM>> getPaginatedInvitationsAsync(string username, int skip, int take, string order);
+        Task<Invitation> GetInvitationById(string id);
+        Task AddGroupMember(string groupname, string username);
+        Task DeleteInvitation(string id);
     }
 }

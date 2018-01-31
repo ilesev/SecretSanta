@@ -37,5 +37,33 @@ namespace SecretSanta.Controllers
             await GroupsRepository.CreateGroupAsync(group.GroupName, currentUser);
             return Created(Uri.UriSchemeHttp, new Group { GroupName = group.GroupName, Creator = currentUser });
         }
+
+        ///groups/{groupName}/participants
+        [HttpPost("groups/participants/{id}")]
+        public async Task<IActionResult> AcceptInvitation(string id)
+        {
+            Invitation inv = await GroupsRepository.GetInvitationById(id);
+            if (inv == null)
+            {
+                return BadRequest("No id match.");
+            }
+
+            await GroupsRepository.AddGroupMember(inv.Groupname, inv.Username);
+            await GroupsRepository.DeleteInvitation(id);
+            return Created(Uri.UriSchemeHttp, new {Groupname = inv.Groupname, Username = inv.Username});
+        }
+
+        [HttpDelete("groups/participants/{id}")]
+        public async Task<IActionResult> DeleteInvitation(string id)
+        {
+            Invitation inv = await GroupsRepository.GetInvitationById(id);
+            if (inv == null)
+            {
+                return BadRequest("No id match.");
+            }
+
+            await GroupsRepository.DeleteInvitation(id);
+            return NoContent();
+        }
     }
 }

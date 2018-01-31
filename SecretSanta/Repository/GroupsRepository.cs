@@ -25,6 +25,21 @@ namespace SecretSanta.Repository
                 command.Parameters.Add("?name", MySqlDbType.VarChar).Value = groupName;
                 command.Parameters.Add("?creator", MySqlDbType.VarChar).Value = creator;
                 await command.ExecuteNonQueryAsync();
+                await AddGroupMember(groupName, creator);
+
+            }
+        }
+
+        public async Task AddGroupMember(string groupname, string username)
+        {
+            using (var connection = getConnection())
+            {
+                await connection.OpenAsync();
+                var insertIntoGroup = connection.CreateCommand();
+                insertIntoGroup.CommandText = "INSERT INTO GroupMembers(groupname, username) VALUES(@groupname, @username)";
+                insertIntoGroup.Parameters.AddWithValue("@groupname", groupname);
+                insertIntoGroup.Parameters.AddWithValue("@username", username);
+                await insertIntoGroup.ExecuteNonQueryAsync();
             }
         }
 
@@ -55,6 +70,32 @@ namespace SecretSanta.Repository
                 }
             }
             return groups;
+        }
+
+        public async Task<Invitation> GetInvitationById(string id)
+        {
+            Invitation inv = null;
+            using (var connection = getConnection())
+            {
+                await connection.OpenAsync();
+                MySqlCommand command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM Invitations WHERE Id=@id";
+                command.Parameters.AddWithValue("@id", id);
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (reader.Read())
+                    {
+                        inv = new Invitation
+                        {
+                            Groupname = reader.GetString(0),
+                            DateCreated = reader.GetDateTime(1),
+                            Username = reader.GetString(2),
+                            Id = reader.GetString(4)
+                        };
+                    }
+                }
+            }
+                return inv;
         }
 
         public async Task<IEnumerable<InvitationVM>> getPaginatedInvitationsAsync(string username, int skip, int take, string order)
@@ -126,6 +167,18 @@ namespace SecretSanta.Repository
             }
 
             return false;
+        }
+
+        public async Task DeleteInvitation(string invitationId)
+        {
+            using (var connection = getConnection())
+            {
+                await connection.OpenAsync();
+                MySqlCommand command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM Invitations WHERE id=@id";
+                command.Parameters.AddWithValue("@id", invitationId);
+                await command.ExecuteNonQueryAsync();
+            }
         }
     }
 }
