@@ -31,39 +31,141 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status409Conflict, "Groupname already exists.");
             }
 
-            StringValues authToken;
-            Request.Headers.TryGetValue("AuthenticationToken", out authToken);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken[0]);
+            string authToken = getAuthToken(Request);
+            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
             await GroupsRepository.CreateGroupAsync(group.GroupName, currentUser);
             return Created(Uri.UriSchemeHttp, new Group { GroupName = group.GroupName, Creator = currentUser });
         }
 
         ///groups/{groupName}/participants
-        [HttpPost("groups/participants/{id}")]
+        [HttpPost("groups/invitations/{id}")]
         public async Task<IActionResult> AcceptInvitation(string id)
         {
-            Invitation inv = await GroupsRepository.GetInvitationById(id);
+            Invitation inv = await GroupsRepository.GetInvitationByIdAsync(id);
             if (inv == null)
             {
                 return BadRequest("No id match.");
             }
 
-            await GroupsRepository.AddGroupMember(inv.Groupname, inv.Username);
-            await GroupsRepository.DeleteInvitation(id);
+            await GroupsRepository.AddGroupMemberAsync(inv.Groupname, inv.Username);
+            await GroupsRepository.DeleteInvitationAsync(id);
             return Created(Uri.UriSchemeHttp, new {Groupname = inv.Groupname, Username = inv.Username});
         }
 
-        [HttpDelete("groups/participants/{id}")]
+        [HttpDelete("groups/invitations/{id}")]
         public async Task<IActionResult> DeleteInvitation(string id)
         {
-            Invitation inv = await GroupsRepository.GetInvitationById(id);
+            Invitation inv = await GroupsRepository.GetInvitationByIdAsync(id);
             if (inv == null)
             {
                 return BadRequest("No id match.");
             }
 
-            await GroupsRepository.DeleteInvitation(id);
+            await GroupsRepository.DeleteInvitationAsync(id);
             return NoContent();
+        }
+
+        [HttpPost("groups/{groupname}/links")]
+        public async Task<IActionResult> LinkPeople(string groupname)
+        {
+            if (!await GroupsRepository.groupExistsAsync(groupname))
+            {
+                return NotFound("Group not found.");
+            }
+
+            string authToken = getAuthToken(Request);
+            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+
+            if(currentUser == null || admin == null) 
+            {
+                return BadRequest("Invalid data.");
+            }
+            else if (!currentUser.Equals(admin))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "You aren't the administrator of the group.");
+            }
+
+            IEnumerable<GroupMember> groupMembers = await GroupsRepository.getGroupMembers(groupname);
+
+            if (groupMembers.Count() < 2)
+            {
+                return StatusCode(StatusCodes.Status412PreconditionFailed, "Can't start gift giving with less than 2 people in group.");
+            }
+
+            if (groupMembers.Any(x => x.GiftsTo != null))
+            {
+                return BadRequest("Gift process has already been started once.");
+            }
+
+            await GroupsRepository.StartGiftGivingAsync(groupname, groupMembers);
+            return StatusCode(StatusCodes.Status201Created);
+        }
+
+        [HttpGet("groups/{groupname}/participants")]
+        public async Task<IActionResult> GetAllMembers(string groupname)
+        {
+            if (!await GroupsRepository.groupExistsAsync(groupname))
+            {
+                return NotFound("Group not found.");
+            }
+
+            string authToken = getAuthToken(Request);
+            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+
+            if (admin == null || currentUser == null)
+            {
+                return BadRequest("Bad data.");
+            }
+            else if (!admin.Equals(currentUser))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not the admin of this group");
+            }
+
+            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            return Ok(members);
+        }
+
+        [HttpDelete("groups/{groupname}/participants/{username}")]
+        public async Task<IActionResult> DeleteMember(string groupname, string username)
+        {
+            if (!await GroupsRepository.groupExistsAsync(groupname))
+            {
+                return NotFound("Group doesn't exist.");
+            }
+
+            string authToken = getAuthToken(Request);
+            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+
+            if (admin == null || currentUser == null)
+            {
+                return BadRequest("Bad data.");
+            }
+            else if (!admin.Equals(currentUser))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not the admin of this group");
+            }
+
+            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            GroupMember toDelete = members.FirstOrDefault(x => x.Username.Equals(username));
+
+            if (toDelete == null)
+            {
+                return NotFound("User does not belong to group.");
+            }
+
+            await GroupsRepository.DeleteMemberAsync(toDelete);
+
+            return NoContent();
+        }
+
+        private string getAuthToken(HttpRequest request)
+        {
+            StringValues authToken;
+            request.Headers.TryGetValue("AuthenticationToken", out authToken);
+            return authToken[0];
         }
     }
 }

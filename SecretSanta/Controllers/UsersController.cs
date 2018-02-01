@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using SecretSanta.Filter;
 using SecretSanta.Models;
@@ -29,10 +28,10 @@ namespace SecretSanta.Controllers
             if (ModelState.IsValid)
             {
                 if (await UsersRepository.userExistsAsync(user.Username)) 
-                    {
-                        return StatusCode(StatusCodes.Status409Conflict, "Username already exists");
-                    }
-                    await UsersRepository.RegisterUserAsync(user);
+                {
+                    return StatusCode(StatusCodes.Status409Conflict, "Username already exists");
+                }
+                await UsersRepository.RegisterUserAsync(user);
                 return Created(Uri.UriSchemeHttp, new { displayname = user.DisplayName });
             }
             return BadRequest("Invalid registration request.");
@@ -104,7 +103,7 @@ namespace SecretSanta.Controllers
 
             string authToken = getAuthToken(Request);
             invitation.DateCreated = DateTime.Now;
-            string adminOfGroup = await GroupsRepository.getAdminOfGroup(invitation.Groupname);
+            string adminOfGroup = await GroupsRepository.getAdminOfGroupAsync(invitation.Groupname);
             string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
 
             if (!currentUser.Equals(adminOfGroup))
@@ -112,7 +111,7 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, "You are not the administrator of this group");
             }
 
-            if (await GroupsRepository.UserHasInvitationForGroup(invitation.Groupname, username))
+            if (await GroupsRepository.UserHasInvitationForGroupAsync(invitation.Groupname, username))
             {
                 return StatusCode(StatusCodes.Status409Conflict, "User already has an invite for this group.");
             }
@@ -121,7 +120,7 @@ namespace SecretSanta.Controllers
             invitation.Username = username;
             invitation.Id = Guid.NewGuid().ToString();
 
-            await GroupsRepository.sendInvitation(invitation);
+            await GroupsRepository.sendInvitationAsync(invitation);
             return Created(Uri.UriSchemeHttp, new { id = invitation.Id });
         }
 
@@ -152,9 +151,52 @@ namespace SecretSanta.Controllers
             return Ok(invitations);
         }
 
+        [HttpGet("users/groups")]
+        [ServiceFilter(typeof(AuthenticationFilter))]
+        public async Task<IActionResult> GetUserGroups([FromQuery]int skip = 0, [FromQuery] int take = 1)
+        {
+            if (skip < 0 || take < 1)
+            {
+                return BadRequest("Invalid data.");
+            }
+            string authToken = getAuthToken(Request);
+            string username = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+
+            IEnumerable<object> groups = await GroupsRepository.GetUserGroups(username, skip, take);
+            return Ok(groups);
+        }
+
+        [HttpGet("users/groups/{groupname}/links")]
+        [ServiceFilter(typeof(AuthenticationFilter))]
+        public async Task<IActionResult> IsUserConnectInGroup(string groupname)
+        {
+            if (!await GroupsRepository.groupExistsAsync(groupname))
+            {
+                return NotFound("Group not found");
+            }
+
+            string authToken = getAuthToken(Request);
+            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            GroupMember member = members.FirstOrDefault(x => x.Username.Equals(currentUser));
+
+            if (member == null)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "User not part of group.");
+            }
+
+            string giftsTo = member.GiftsTo;
+            if (giftsTo == null)
+            {
+                return NotFound("Gift process hasn't started yet.");
+            }
+
+            return Ok(new { receiver = giftsTo });
+        }
+
         private bool isDataValid(int skip, int take, string order)
         {
-            if (skip < 0 || take < 0)
+            if (skip < 0 || take < 1)
             {
                 return false;
             }

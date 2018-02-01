@@ -178,7 +178,8 @@ namespace SecretSanta.Repository
         public async Task<string> getUsernameByAuthTokenAsync(string authToken)
         {
             IEnumerable<SignedInUsers> users = await getAllSignedInUsersAsync();
-            return users.FirstOrDefault(x => x.Guid.Equals(authToken)).Username;
+            SignedInUsers user = users.FirstOrDefault(x => x.Guid.Equals(authToken));
+            return user != null ? user.Username : null;
         }
     }
 }
