@@ -21,23 +21,23 @@ namespace SecretSanta.Controllers
         [HttpPost("logins")]
         public async Task<IActionResult> Login([FromBody]User user)
         {
-            if (!await UsersRepository.userExistsAsync(user.Username))
+            if (!await UsersRepository.UserExistsAsync(user.Username))
             {
                 return NotFound(String.Format("Username {0} was not found", user.Username));
             }
 
-            if (!await UsersRepository.passwordsMatchAsync(user.Username, user.Password))
+            if (!await UsersRepository.PasswordsMatchAsync(user.Username, user.Password))
             {
                 return StatusCode(StatusCodes.Status401Unauthorized ,"Incorrect password");
             }
 
-            if (await UsersRepository.isUserSignedInAsync(user.Username))
+            if (await UsersRepository.IsUserSignedInAsync(user.Username))
             {
-                return Ok(new {AuthenticationToken = await UsersRepository.getGuidForSignedInUserAsync(user.Username)});
+                return Ok(new {AuthenticationToken = await UsersRepository.GetGuidForSignedInUserAsync(user.Username)});
             }
 
             string guid = Guid.NewGuid().ToString();
-            await UsersRepository.signInUserAsync(user.Username, guid);
+            await UsersRepository.SignInUserAsync(user.Username, guid);
 
             return Created(Uri.UriSchemeHttp, new {AuthenticationToken = guid});
         }
@@ -46,9 +46,9 @@ namespace SecretSanta.Controllers
         [ServiceFilter(typeof(AuthenticationFilter))]
         public async Task<IActionResult> Logout(string username)
         {
-            if (await UsersRepository.isUserSignedInAsync(username))
+            if (await UsersRepository.IsUserSignedInAsync(username))
             {
-                await UsersRepository.deleteSignedInUserAsync(username);
+                await UsersRepository.DeleteSignedInUserAsync(username);
                 return NoContent();
             }
 

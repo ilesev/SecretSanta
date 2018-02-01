@@ -20,7 +20,7 @@ namespace SecretSanta.Filter
         {
             StringValues authToken;
             if(!context.HttpContext.Request.Headers.TryGetValue("AuthenticationToken",out authToken) ||
-               !await Repository.isGuidPresentAsync(authToken[0])) 
+               !await Repository.IsGuidPresentAsync(authToken[0])) 
             {
                 context.HttpContext.Response.ContentType = "text/plain";
                 context.HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
