@@ -27,7 +27,7 @@ namespace SecretSanta.Controllers
         {
             if (ModelState.IsValid)
             {
-                if (await UsersRepository.userExistsAsync(user.Username)) 
+                if (await UsersRepository.UserExistsAsync(user.Username)) 
                 {
                     return StatusCode(StatusCodes.Status409Conflict, "Username already exists");
                 }
@@ -45,7 +45,7 @@ namespace SecretSanta.Controllers
         {
             if (DataIsValid(skip, take, order, type))
             {
-                IEnumerable<UsersVM> users = await UsersRepository.getListOfUsers(name, skip, take, order.ToLower(), type.ToLower());
+                IEnumerable<UsersVM> users = await UsersRepository.GetListOfUsers(name, skip, take, order.ToLower(), type.ToLower());
                 return Ok(users);
             }
 
@@ -57,12 +57,12 @@ namespace SecretSanta.Controllers
         [ServiceFilter(typeof(AuthenticationFilter))]
         public async Task<IActionResult> GetUserByUsername(string username)
         {
-            if (!await UsersRepository.userExistsAsync(username))
+            if (!await UsersRepository.UserExistsAsync(username))
             {
                 return NotFound("Username not found.");
             }
             //should have only 1 user
-            IEnumerable<UsersVM> users = await UsersRepository.getListOfUsers(username, 0, 1, "asc", "username");
+            IEnumerable<UsersVM> users = await UsersRepository.GetListOfUsers(username, 0, 1, "asc", "username");
             return Ok(users.FirstOrDefault());
         }
 
@@ -92,7 +92,7 @@ namespace SecretSanta.Controllers
         [ServiceFilter(typeof(AuthenticationFilter))]
         public async Task<IActionResult> SendInvitation(string username, [FromBody] Invitation invitation)
         {
-            if (!await UsersRepository.userExistsAsync(username))
+            if (!await UsersRepository.UserExistsAsync(username))
             {
                 return NotFound("Username not found.");
             }
@@ -103,8 +103,8 @@ namespace SecretSanta.Controllers
 
             string authToken = getAuthToken(Request);
             invitation.DateCreated = DateTime.Now;
-            string adminOfGroup = await GroupsRepository.getAdminOfGroupAsync(invitation.Groupname);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string adminOfGroup = await GroupsRepository.GetAdminOfGroupAsync(invitation.Groupname);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
 
             if (!currentUser.Equals(adminOfGroup))
             {
@@ -116,11 +116,17 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status409Conflict, "User already has an invite for this group.");
             }
 
+            IEnumerable<GroupMember> members = await GroupsRepository.GetGroupMembersAsync(invitation.Groupname);
+            if (members.Any(x => x.Username.Equals(username))) 
+            {
+                return StatusCode(StatusCodes.Status409Conflict, "User is already in the group.");
+            }
+
             invitation.InvitationStatus = "pending";
             invitation.Username = username;
             invitation.Id = Guid.NewGuid().ToString();
 
-            await GroupsRepository.sendInvitationAsync(invitation);
+            await GroupsRepository.SendInvitationAsync(invitation);
             return Created(Uri.UriSchemeHttp, new { id = invitation.Id });
         }
 
@@ -130,7 +136,7 @@ namespace SecretSanta.Controllers
         public async Task<IActionResult> GetUserInvitations(string username, [FromQuery] int skip = 0,
                                                             [FromQuery] int take = 1, [FromQuery]string order = "asc")
         {
-            if (!await UsersRepository.userExistsAsync(username))
+            if (!await UsersRepository.UserExistsAsync(username))
             {
                 return NotFound("Username does not exist.");
             }
@@ -141,13 +147,13 @@ namespace SecretSanta.Controllers
             }
 
             string authToken = getAuthToken(Request);
-            string currentUsername = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string currentUsername = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
             if (!currentUsername.Equals(username))
             {
                 return StatusCode(StatusCodes.Status403Forbidden, "You don't have access to this.");
             }
 
-            IEnumerable<InvitationVM> invitations = await GroupsRepository.getPaginatedInvitationsAsync(username, skip, take, order.ToLower());
+            IEnumerable<InvitationVM> invitations = await GroupsRepository.GetPaginatedInvitationsAsync(username, skip, take, order.ToLower());
             return Ok(invitations);
         }
 
@@ -160,7 +166,7 @@ namespace SecretSanta.Controllers
                 return BadRequest("Invalid data.");
             }
             string authToken = getAuthToken(Request);
-            string username = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string username = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
 
             IEnumerable<object> groups = await GroupsRepository.GetUserGroups(username, skip, take);
             return Ok(groups);
@@ -170,14 +176,14 @@ namespace SecretSanta.Controllers
         [ServiceFilter(typeof(AuthenticationFilter))]
         public async Task<IActionResult> IsUserConnectInGroup(string groupname)
         {
-            if (!await GroupsRepository.groupExistsAsync(groupname))
+            if (!await GroupsRepository.GroupExistsAsync(groupname))
             {
                 return NotFound("Group not found");
             }
 
             string authToken = getAuthToken(Request);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
-            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
+            IEnumerable<GroupMember> members = await GroupsRepository.GetGroupMembersAsync(groupname);
             GroupMember member = members.FirstOrDefault(x => x.Username.Equals(currentUser));
 
             if (member == null)

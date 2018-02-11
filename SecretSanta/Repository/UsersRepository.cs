@@ -34,7 +34,7 @@ namespace SecretSanta.Repository
             }
         }
 
-        public async Task<bool> userExistsAsync(string username)
+        public async Task<bool> UserExistsAsync(string username)
         {
             using (var connection = getConnection())
             {
@@ -57,7 +57,7 @@ namespace SecretSanta.Repository
             return false;
         }
 
-        public async Task<IEnumerable<UsersVM>> getListOfUsers(string name, int skip, int take, string order, string type)
+        public async Task<IEnumerable<UsersVM>> GetListOfUsers(string name, int skip, int take, string order, string type)
         {
             List<UsersVM> users = new List<UsersVM>();
             bool isTypeUsername = type.Equals("username");
@@ -86,7 +86,7 @@ namespace SecretSanta.Repository
             return isAscOrdering ? paginatedUsers.OrderBy(x => x.Username) : paginatedUsers.OrderByDescending(x => x.Username);
         }
 
-        public async Task<bool> passwordsMatchAsync(string username, string password)
+        public async Task<bool> PasswordsMatchAsync(string username, string password)
         {
             using (var connection = getConnection())
             {
@@ -109,7 +109,7 @@ namespace SecretSanta.Repository
             return false;
         }
 
-        public async Task signInUserAsync(string username, string guid)
+        public async Task SignInUserAsync(string username, string guid)
         {
             using (var connection = getConnection())
             {
@@ -145,19 +145,19 @@ namespace SecretSanta.Repository
             }
         }
 
-        public async Task<bool> isUserSignedInAsync(string username)
+        public async Task<bool> IsUserSignedInAsync(string username)
         {
             IEnumerable<SignedInUsers> users = await getAllSignedInUsersAsync();
             return users.Any(x => x.Username.Equals(username));
         }
 
-        public async Task<bool> isGuidPresentAsync(string guid)
+        public async Task<bool> IsGuidPresentAsync(string guid)
         {
             IEnumerable<SignedInUsers> users = await getAllSignedInUsersAsync();
             return users.Any(x => x.Guid.Equals(guid));
         }
 
-        public async Task deleteSignedInUserAsync(string username)
+        public async Task DeleteSignedInUserAsync(string username)
         {
             using (var connection = getConnection())
             {
@@ -169,13 +169,13 @@ namespace SecretSanta.Repository
             }
         }
 
-        public async Task<string> getGuidForSignedInUserAsync(string username)
+        public async Task<string> GetGuidForSignedInUserAsync(string username)
         {
             IEnumerable<SignedInUsers> users = await getAllSignedInUsersAsync();
             return users.FirstOrDefault(x => x.Username.Equals(username)).Guid;
         }
 
-        public async Task<string> getUsernameByAuthTokenAsync(string authToken)
+        public async Task<string> GetUsernameByAuthTokenAsync(string authToken)
         {
             IEnumerable<SignedInUsers> users = await getAllSignedInUsersAsync();
             SignedInUsers user = users.FirstOrDefault(x => x.Guid.Equals(authToken));

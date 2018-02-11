@@ -43,7 +43,7 @@ namespace SecretSanta.Repository
             }
         }
 
-        public async Task<string> getAdminOfGroupAsync(string groupname)
+        public async Task<string> GetAdminOfGroupAsync(string groupname)
         {
             IEnumerable<Group> groups = await GetAllGroupsAsync();
             return groups.FirstOrDefault(x => x.GroupName.Equals(groupname, StringComparison.OrdinalIgnoreCase)).Creator;
@@ -98,7 +98,7 @@ namespace SecretSanta.Repository
                 return inv;
         }
 
-        public async Task<IEnumerable<InvitationVM>> getPaginatedInvitationsAsync(string username, int skip, int take, string order)
+        public async Task<IEnumerable<InvitationVM>> GetPaginatedInvitationsAsync(string username, int skip, int take, string order)
         {
             bool isAscOrder = order.Equals("asc");
             List<InvitationVM> invitations = new List<InvitationVM>();
@@ -106,8 +106,8 @@ namespace SecretSanta.Repository
             {
                 await connection.OpenAsync();
                 MySqlCommand command = connection.CreateCommand();
-                command.CommandText = "SELECT groupname, datecreated, id FROM Invitations";
-                command.Parameters.AddWithValue("@order", order.ToUpper());
+                command.CommandText = "SELECT groupname, datecreated, id FROM Invitations WHERE username=@username";
+                command.Parameters.AddWithValue("@username", username);
                 using (var reader = await command.ExecuteReaderAsync())
                 {
                     while(reader.Read())
@@ -124,13 +124,13 @@ namespace SecretSanta.Repository
             return isAscOrder ? invitations.OrderBy(x => x.DateCreated) : invitations.OrderByDescending( x => x.DateCreated);
         }
 
-        public async Task<bool> groupExistsAsync(string groupName)
+        public async Task<bool> GroupExistsAsync(string groupName)
         {
             IEnumerable<Group> groups = await GetAllGroupsAsync();
             return groups.Any(x => x.GroupName.Equals(groupName, StringComparison.OrdinalIgnoreCase));
         }
 
-        public async Task sendInvitationAsync(Invitation invitation)
+        public async Task SendInvitationAsync(Invitation invitation)
         {
             using (var connection = getConnection())
             {
@@ -181,7 +181,7 @@ namespace SecretSanta.Repository
             }
         }
 
-        public async Task<IEnumerable<GroupMember>> getGroupMembers(string groupname)
+        public async Task<IEnumerable<GroupMember>> GetGroupMembersAsync(string groupname)
         {
             List<GroupMember> members = new List<GroupMember>();
             using (var connection = getConnection())

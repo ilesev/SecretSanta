@@ -52,7 +52,7 @@ namespace SecretSanta.Controllers
                 return NoContent();
             }
 
-            return NotFound();
+                return NotFound();
         }
     }
 }

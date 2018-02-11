@@ -26,20 +26,20 @@ namespace SecretSanta.Controllers
         [HttpPost("groups")]
         public async Task<IActionResult> CreateGroupAsync([FromBody]Group group)
         {
-            if (await GroupsRepository.groupExistsAsync(group.GroupName))
+            if (await GroupsRepository.GroupExistsAsync(group.GroupName))
             {
                 return StatusCode(StatusCodes.Status409Conflict, "Groupname already exists.");
             }
 
             string authToken = getAuthToken(Request);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
             await GroupsRepository.CreateGroupAsync(group.GroupName, currentUser);
             return Created(Uri.UriSchemeHttp, new Group { GroupName = group.GroupName, Creator = currentUser });
         }
 
         ///groups/{groupName}/participants
-        [HttpPost("groups/invitations/{id}")]
-        public async Task<IActionResult> AcceptInvitation(string id)
+        [HttpPost("groups/invitations")]
+        public async Task<IActionResult> AcceptInvitation([FromQuery]string id)
         {
             Invitation inv = await GroupsRepository.GetInvitationByIdAsync(id);
             if (inv == null)
@@ -52,8 +52,8 @@ namespace SecretSanta.Controllers
             return Created(Uri.UriSchemeHttp, new {Groupname = inv.Groupname, Username = inv.Username});
         }
 
-        [HttpDelete("groups/invitations/{id}")]
-        public async Task<IActionResult> DeleteInvitation(string id)
+        [HttpDelete("groups/invitations")]
+        public async Task<IActionResult> DeleteInvitation([FromQuery]string id)
         {
             Invitation inv = await GroupsRepository.GetInvitationByIdAsync(id);
             if (inv == null)
@@ -68,14 +68,14 @@ namespace SecretSanta.Controllers
         [HttpPost("groups/{groupname}/links")]
         public async Task<IActionResult> LinkPeople(string groupname)
         {
-            if (!await GroupsRepository.groupExistsAsync(groupname))
+            if (!await GroupsRepository.GroupExistsAsync(groupname))
             {
                 return NotFound("Group not found.");
             }
 
             string authToken = getAuthToken(Request);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
-            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.GetAdminOfGroupAsync(groupname);
 
             if(currentUser == null || admin == null) 
             {
@@ -86,7 +86,7 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, "You aren't the administrator of the group.");
             }
 
-            IEnumerable<GroupMember> groupMembers = await GroupsRepository.getGroupMembers(groupname);
+            IEnumerable<GroupMember> groupMembers = await GroupsRepository.GetGroupMembersAsync(groupname);
 
             if (groupMembers.Count() < 2)
             {
@@ -105,14 +105,14 @@ namespace SecretSanta.Controllers
         [HttpGet("groups/{groupname}/participants")]
         public async Task<IActionResult> GetAllMembers(string groupname)
         {
-            if (!await GroupsRepository.groupExistsAsync(groupname))
+            if (!await GroupsRepository.GroupExistsAsync(groupname))
             {
                 return NotFound("Group not found.");
             }
 
             string authToken = getAuthToken(Request);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
-            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.GetAdminOfGroupAsync(groupname);
 
             if (admin == null || currentUser == null)
             {
@@ -123,21 +123,21 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, "You are not the admin of this group");
             }
 
-            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            IEnumerable<GroupMember> members = await GroupsRepository.GetGroupMembersAsync(groupname);
             return Ok(members);
         }
 
         [HttpDelete("groups/{groupname}/participants/{username}")]
         public async Task<IActionResult> DeleteMember(string groupname, string username)
         {
-            if (!await GroupsRepository.groupExistsAsync(groupname))
+            if (!await GroupsRepository.GroupExistsAsync(groupname))
             {
                 return NotFound("Group doesn't exist.");
             }
 
             string authToken = getAuthToken(Request);
-            string currentUser = await UsersRepository.getUsernameByAuthTokenAsync(authToken);
-            string admin = await GroupsRepository.getAdminOfGroupAsync(groupname);
+            string currentUser = await UsersRepository.GetUsernameByAuthTokenAsync(authToken);
+            string admin = await GroupsRepository.GetAdminOfGroupAsync(groupname);
 
             if (admin == null || currentUser == null)
             {
@@ -148,7 +148,7 @@ namespace SecretSanta.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, "You are not the admin of this group");
             }
 
-            IEnumerable<GroupMember> members = await GroupsRepository.getGroupMembers(groupname);
+            IEnumerable<GroupMember> members = await GroupsRepository.GetGroupMembersAsync(groupname);
             GroupMember toDelete = members.FirstOrDefault(x => x.Username.Equals(username));
 
             if (toDelete == null)
